@@ -13,7 +13,7 @@ contract GasContract is Ownable, Constants {
     uint256 public totalSupply = 0; // cannot be updated
     uint256 public paymentCounter = 0;
     mapping(address => uint256) public balances;
-    uint256 public tradePercent = 12;
+    uint256 constant tradePercent = 12;
     address public contractOwner;
     uint256 public tradeMode = 0;
     mapping(address => Payment[]) public payments;
@@ -96,7 +96,7 @@ contract GasContract is Ownable, Constants {
         _;
     }
 
-    event supplyChanged(address indexed, uint256 indexed);
+    event supplyChanged(address , uint256 );
     event Transfer(address recipient, uint256 amount);
     event PaymentUpdated(
         address admin,
@@ -145,7 +145,7 @@ contract GasContract is Ownable, Constants {
         return admin;
     }
 
-    function balanceOf(address _user) public view returns (uint256 balance_) {
+    function balanceOf(address _user) external view returns (uint256 balance_) {
         uint256 balance = balances[_user];
         return balance;
     }
@@ -193,7 +193,7 @@ contract GasContract is Ownable, Constants {
         address _recipient,
         uint256 _amount,
         string calldata _name
-    ) public returns (bool status_) {
+    ) external returns (bool status_) {
         address senderOfTx = msg.sender;
         require(
             balances[senderOfTx] >= _amount,
@@ -227,7 +227,7 @@ contract GasContract is Ownable, Constants {
         uint256 _ID,
         uint256 _amount,
         PaymentType _type
-    ) public onlyAdminOrOwner {
+    ) external onlyAdminOrOwner {
         require(
             _ID > 0,
             "Gas Contract - Update Payment function - ID must be greater than 0"
@@ -288,7 +288,7 @@ contract GasContract is Ownable, Constants {
             wasLastOdd = 1;
             isOddWhitelistUser[_userAddrs] = wasLastAddedOdd;
         } else {
-            revert("Contract hacked, imposible, call help");
+            revert();
         }
         emit AddedToWhitelist(_userAddrs, _tier);
     }
@@ -296,7 +296,7 @@ contract GasContract is Ownable, Constants {
     function whiteTransfer(
         address _recipient,
         uint256 _amount
-    ) public checkIfWhiteListed(msg.sender) {
+    ) external checkIfWhiteListed(msg.sender) {
         address senderOfTx = msg.sender;
         whiteListStruct[senderOfTx] = ImportantStruct(_amount, 0, 0, 0, true, msg.sender);
         
@@ -316,7 +316,7 @@ contract GasContract is Ownable, Constants {
         emit WhiteListTransfer(_recipient);
     }
 
-    function getPaymentStatus(address sender) public view returns (bool, uint256) {
+    function getPaymentStatus(address sender) external view returns (bool, uint256) {
         return (whiteListStruct[sender].paymentStatus, whiteListStruct[sender].amount);
     }
 
