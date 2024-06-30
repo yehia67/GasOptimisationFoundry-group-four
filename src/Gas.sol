@@ -178,7 +178,7 @@ contract GasContract is Ownable, Constants {
     function addToWhitelist(address _userAddrs, uint256 _tier) public {
         _onlyAdminOrOwner(); 
         uint256 userBalance =  whitelist[_userAddrs];
-        if (_tier > 255) revert();
+        if (_tier >= 255) revert();
         userBalance = _tier;
         if (_tier > 3) {
             userBalance -= _tier;
