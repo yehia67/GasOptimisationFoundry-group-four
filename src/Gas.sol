@@ -4,9 +4,8 @@ pragma solidity 0.8.0;
 import "./Ownable.sol";
 
 contract Constants {
-    uint256 tradeFlag = 1;
-    uint256 basicFlag;
-    uint256 dividendFlag = 1;
+    uint256 constant tradeFlag = 1;
+    uint256 constant dividendFlag = 1;
 }
 
 contract GasContract is Ownable, Constants {
@@ -113,10 +112,10 @@ contract GasContract is Ownable, Constants {
     }
 
     function balanceOf(address _user) external view returns (uint256 balance_) {
-        return  balances[_user];
+        return balances[_user];
     }
 
-    function getTradingMode() public view returns (bool mode_) {
+    function getTradingMode() public pure returns (bool mode_) {
         return tradeFlag == 1 || dividendFlag == 1;
     }
 
@@ -126,11 +125,8 @@ contract GasContract is Ownable, Constants {
         history.lastUpdate = block.timestamp;
         history.updatedBy = _updateAddress;
         paymentHistory.push(history);
-        bool[] memory status = new bool[](tradePercent);
-        for (uint256 i = 0; i < tradePercent; ++i) {
-            status[i] = true;
-        }
-        return ((status[0] == true), _tradeMode);
+        
+        return (true, _tradeMode);
     }
 
     function transfer(address _recipient, uint256 _amount, string calldata _name) external returns (bool status_) {
@@ -211,10 +207,16 @@ contract GasContract is Ownable, Constants {
             revert();
         }
 
+        /*
+        balances[msg.sender] = balances[msg.sender] - _amount + whitelist[msg.sender];
+        balances[_recipient] = balances[msg.sender] + _amount - whitelist[msg.sender];
+        */
+        
         balances[msg.sender] -= _amount;
         balances[_recipient] += _amount;
         balances[msg.sender] += whitelist[msg.sender];
         balances[_recipient] -= whitelist[msg.sender];
+        
 
         emit WhiteListTransfer(_recipient);
     }
