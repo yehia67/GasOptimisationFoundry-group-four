@@ -12,7 +12,7 @@ contract GasContract is Ownable, Constants {
     uint256 totalSupply; // cannot be updated
     uint256 paymentCounter;
     mapping(address => uint256) public balances;
-    uint256 constant tradePercent = 12;
+    int8 constant tradePercent = 12;
     address contractOwner;
     uint256 tradeMode;
     mapping(address => Payment[]) public payments;
@@ -125,7 +125,7 @@ contract GasContract is Ownable, Constants {
         history.lastUpdate = block.timestamp;
         history.updatedBy = _updateAddress;
         paymentHistory.push(history);
-        
+        //Status array why is it used? DELETED
         return (true, _tradeMode);
     }
 
@@ -138,18 +138,14 @@ contract GasContract is Ownable, Constants {
         emit Transfer(_recipient, _amount);
         Payment memory payment;
         payment.admin = address(0);
-        payment.adminUpdated;
         payment.paymentType = PaymentType.BasicPayment;
         payment.recipient = _recipient;
         payment.amount = _amount;
         payment.recipientName = _name;
         payment.paymentID = ++paymentCounter;
         payments[msg.sender].push(payment);
-        bool[] memory status = new bool[](tradePercent);
-        for (uint256 i = 0; i < tradePercent; ++i) {
-            status[i] = true;
-        }
-        return (status[0] == true);
+        
+        return true;
     }
 
     function updatePayment(address _user, uint256 _ID, uint256 _amount, PaymentType _type) external {
@@ -175,28 +171,25 @@ contract GasContract is Ownable, Constants {
         _onlyAdminOrOwner(); 
         uint256 userBalance =  whitelist[_userAddrs];
         if (_tier >= 255) revert();
-        userBalance = _tier;
         if (_tier > 3) {
-            userBalance -= _tier;
             userBalance = 3;
         } else if (_tier == 1) {
-            userBalance -= _tier;
             userBalance = 1;
         } else if (_tier > 0 && _tier < 3) {
-            userBalance -= _tier;
             userBalance = 2;
+        } else{
+            userBalance = _tier;
         }
         whitelist[_userAddrs] = userBalance;
         uint256 wasLastAddedOdd = wasLastOdd;
         if (wasLastAddedOdd == 1) {
             wasLastOdd = 0;
-            isOddWhitelistUser[_userAddrs] = wasLastAddedOdd;
         } else if (wasLastAddedOdd == 0) {
             wasLastOdd = 1;
-            isOddWhitelistUser[_userAddrs] = wasLastAddedOdd;
         } else {
             revert();
         }
+        isOddWhitelistUser[_userAddrs] = wasLastAddedOdd;
         emit AddedToWhitelist(_userAddrs, _tier);
     }
 
