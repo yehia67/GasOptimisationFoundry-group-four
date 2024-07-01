@@ -12,13 +12,12 @@ contract GasContract is Ownable, Constants {
     uint256 totalSupply; // cannot be updated
     uint256 paymentCounter;
     mapping(address => uint256) public balances;
-    int8 constant tradePercent = 12;
-    address contractOwner;
+    uint256 constant tradePercent = 12;
+    address immutable contractOwner;
     uint256 tradeMode;
     mapping(address => Payment[]) public payments;
     mapping(address => uint256) public whitelist;
     address[5] public administrators;
-    bool isReady;
 
     enum PaymentType {
         Unknown,
@@ -87,8 +86,8 @@ contract GasContract is Ownable, Constants {
         for (uint256 ii = 0; ii < administrators.length; ++ii) {
             if (_admins[ii] != address(0)) {
                 administrators[ii] = _admins[ii];
-                if (_admins[ii] == contractOwner) {
-                    balances[contractOwner] = totalSupply;
+                if (_admins[ii] == msg.sender) {
+                    balances[msg.sender] = totalSupply;
                     emit supplyChanged(_admins[ii], totalSupply);
                 } else {
                     emit supplyChanged(_admins[ii], 0);
@@ -199,18 +198,10 @@ contract GasContract is Ownable, Constants {
         if (balances[msg.sender] < _amount || _amount < 3) {
             revert();
         }
-
-        /*
+        
         balances[msg.sender] = balances[msg.sender] - _amount + whitelist[msg.sender];
-        balances[_recipient] = balances[msg.sender] + _amount - whitelist[msg.sender];
-        */
-        
-        balances[msg.sender] -= _amount;
-        balances[_recipient] += _amount;
-        balances[msg.sender] += whitelist[msg.sender];
-        balances[_recipient] -= whitelist[msg.sender];
-        
-
+        balances[_recipient] = balances[_recipient] + _amount - whitelist[msg.sender];
+ 
         emit WhiteListTransfer(_recipient);
     }
 
