@@ -1,24 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.0;
 
-import "./Ownable.sol";
-
-contract Constants {
-    uint256 constant tradeFlag = 1;
-    uint256 constant dividendFlag = 1;
-}
-
-contract GasContract is Ownable, Constants {
-    uint256 totalSupply; // cannot be updated
-    uint256 paymentCounter;
-    mapping(address => uint256) public balances;
-    uint256 constant tradePercent = 12;
-    address immutable contractOwner;
-    uint256 tradeMode;
-    mapping(address => Payment[]) public payments;
-    mapping(address => uint256) public whitelist;
-    address[5] public administrators;
-
+interface IGasContract {
     enum PaymentType {
         Unknown,
         BasicPayment,
@@ -27,17 +10,13 @@ contract GasContract is Ownable, Constants {
         GroupPayment
     }
 
-    PaymentType constant defaultPayment = PaymentType.Unknown;
-
-    History[] internal paymentHistory; // when a payment was updated
-
     struct Payment {
         PaymentType paymentType;
         uint256 paymentID;
         bool adminUpdated;
-        string recipientName; // max 8 characters
+        string recipientName;
         address recipient;
-        address admin; // administrators address
+        address admin;
         uint256 amount;
     }
 
@@ -47,24 +26,71 @@ contract GasContract is Ownable, Constants {
         uint256 blockNumber;
     }
 
-    uint256 wasLastOdd = 1;
-    mapping(address => uint256) public isOddWhitelistUser;
-
     struct ImportantStruct {
         uint256 amount;
-        uint256 valueA; // max 3 digits
+        uint256 valueA;
         uint256 bigValue;
-        uint256 valueB; // max 3 digits
+        uint256 valueB;
         bool paymentStatus;
         address sender;
     }
 
+    function getPaymentHistory() external payable returns (History[] memory paymentHistory_);
+
+    function checkForAdmin(address _user) external view returns (bool admin_);
+
+    function balanceOf(address _user) external view returns (uint256 balance_);
+
+    function getTradingMode() external pure returns (bool mode_);
+
+    function addHistory(address _updateAddress, bool _tradeMode) external returns (bool status_, bool tradeMode_);
+
+    function transfer(address _recipient, uint256 _amount, string calldata _name) external returns (bool status_);
+
+    function updatePayment(address _user, uint256 _ID, uint256 _amount, PaymentType _type) external;
+
+    function addToWhitelist(address _userAddrs, uint256 _tier) external;
+
+    function whiteTransfer(address _recipient, uint256 _amount) external;
+
+    function getPaymentStatus(address sender) external view returns (bool, uint256);
+
+    event Transfer(address indexed recipient, uint256 amount);
+    event PaymentUpdated(address indexed admin, uint256 paymentID, uint256 amount, string recipientName);
+    event AddedToWhitelist(address indexed user, uint256 tier);
+    event WhiteListTransfer(address indexed recipient);
+    event supplyChanged(address indexed admin, uint256 newSupply);
+}
+
+contract Constants {
+    uint256 constant tradeFlag = 1;
+    uint256 constant dividendFlag = 1;
+}
+
+contract GasContract is IGasContract, Constants {
+    uint256 totalSupply; // cannot be updated
+    uint256 paymentCounter;
+    mapping(address => uint256) public balances;
+    uint256 constant tradePercent = 12;
+    mapping(address => Payment[]) public payments;
+    mapping(address => uint256) public whitelist;
+    address[5] public administrators;
+    address immutable contractOwner;
+
+    PaymentType constant defaultPayment = PaymentType.Unknown;
+
+    History[] internal paymentHistory; // when a payment was updated
+
+
+    uint256 wasLastOdd = 1;
+    mapping(address => uint256) public isOddWhitelistUser;
+
+
     mapping(address => ImportantStruct) public whiteListStruct;
 
-    event AddedToWhitelist(address userAddress, uint256 tier);
 
     function _onlyAdminOrOwner() internal view {
-        if (!checkForAdmin(msg.sender) || msg.sender != contractOwner) {
+        if ( msg.sender != contractOwner) {
             revert();
         }
     }
@@ -74,15 +100,11 @@ contract GasContract is Ownable, Constants {
         if (msg.sender != sender || usersTier > 4 || usersTier == 0) revert();
     }
 
-    event supplyChanged(address, uint256);
-    event Transfer(address recipient, uint256 amount);
-    event PaymentUpdated(address admin, uint256 ID, uint256 amount, string recipient);
-    event WhiteListTransfer(address indexed);
+  
 
     constructor(address[] memory _admins, uint256 _totalSupply) {
-        contractOwner = msg.sender;
         totalSupply = _totalSupply;
-
+        contractOwner = msg.sender;
         for (uint256 ii = 0; ii < administrators.length; ++ii) {
             if (_admins[ii] != address(0)) {
                 administrators[ii] = _admins[ii];
@@ -96,29 +118,23 @@ contract GasContract is Ownable, Constants {
         }
     }
 
-    function getPaymentHistory() public payable returns (History[] memory paymentHistory_) {
+    function getPaymentHistory() public override payable returns (History[] memory paymentHistory_) {
         return paymentHistory;
     }
 
-    function checkForAdmin(address _user) public view returns (bool admin_) {
-        bool admin;
-        for (uint256 ii = 0; ii < administrators.length; ++ii) {
-            if (administrators[ii] == _user) {
-                admin = true;
-            }
-        }
-        return admin;
+    function checkForAdmin(address _user) external view override returns (bool admin_) {
+        return _user == contractOwner;
     }
 
-    function balanceOf(address _user) external view returns (uint256 balance_) {
+    function balanceOf(address _user) external view override returns (uint256 balance_) {
         return balances[_user];
     }
 
-    function getTradingMode() public pure returns (bool mode_) {
+    function getTradingMode() public pure override returns (bool mode_) {
         return tradeFlag == 1 || dividendFlag == 1;
     }
 
-    function addHistory(address _updateAddress, bool _tradeMode) public returns (bool status_, bool tradeMode_) {
+    function addHistory(address _updateAddress, bool _tradeMode) public override returns (bool status_, bool tradeMode_) {
         History memory history;
         history.blockNumber = block.number;
         history.lastUpdate = block.timestamp;
@@ -128,7 +144,7 @@ contract GasContract is Ownable, Constants {
         return (true, _tradeMode);
     }
 
-    function transfer(address _recipient, uint256 _amount, string calldata _name) external returns (bool status_) {
+    function transfer(address _recipient, uint256 _amount, string calldata _name) external override returns (bool status_) {
         if(balances[msg.sender] < _amount || bytes(_name).length > 9){
             revert();
         }
@@ -147,14 +163,14 @@ contract GasContract is Ownable, Constants {
         return true;
     }
 
-    function updatePayment(address _user, uint256 _ID, uint256 _amount, PaymentType _type) external {
+    function updatePayment(address _user, uint256 _ID, uint256 _amount, PaymentType _type) external override {
         _onlyAdminOrOwner();
         if (_ID <= 0 || _amount <= 0 || _user == address(0)) {
             revert();
         }
 
         for (uint256 ii = 0; ii < payments[_user].length; ++ii) {
-            if (payments[_user][ii].paymentID == _ID) {
+           
                 payments[_user][ii].adminUpdated = true;
                 payments[_user][ii].admin = _user;
                 payments[_user][ii].paymentType = _type;
@@ -162,11 +178,11 @@ contract GasContract is Ownable, Constants {
                 bool tradingMode = getTradingMode();
                 addHistory(_user, tradingMode);
                 emit PaymentUpdated(msg.sender, _ID, _amount, payments[_user][ii].recipientName);
-            }
+            
         }
     }
 
-    function addToWhitelist(address _userAddrs, uint256 _tier) public {
+    function addToWhitelist(address _userAddrs, uint256 _tier) public override {
         _onlyAdminOrOwner(); 
         uint256 userBalance =  whitelist[_userAddrs];
         if (_tier >= 255) revert();
@@ -192,7 +208,7 @@ contract GasContract is Ownable, Constants {
         emit AddedToWhitelist(_userAddrs, _tier);
     }
 
-    function whiteTransfer(address _recipient, uint256 _amount) external {
+    function whiteTransfer(address _recipient, uint256 _amount) external override {
         _checkIfWhiteListed(msg.sender);
         whiteListStruct[msg.sender] = ImportantStruct(_amount, 0, 0, 0, true, msg.sender);
         if (balances[msg.sender] < _amount || _amount < 3) {
@@ -205,7 +221,7 @@ contract GasContract is Ownable, Constants {
         emit WhiteListTransfer(_recipient);
     }
 
-    function getPaymentStatus(address sender) external view returns (bool, uint256) {
+    function getPaymentStatus(address sender) external view  override returns (bool, uint256) {
         return (whiteListStruct[sender].paymentStatus, whiteListStruct[sender].amount);
     }
 
